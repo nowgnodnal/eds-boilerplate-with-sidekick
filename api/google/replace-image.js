@@ -37,7 +37,6 @@ async function signJwt(header, claimSet, privateKeyPem) {
     .replace(/\//g, '_');
   return `${unsigned}.${signature}`;
 }
-
 async function getGoogleAccessToken(scopes) {
   const saEmail = process.env.GOOGLE_SA_EMAIL;
   let saKey = process.env.GOOGLE_SA_PRIVATE_KEY;
@@ -124,7 +123,13 @@ export default async function main(request) {
     const isDocs = /https:\/\/docs\.google\.com\/document\/d\//.test(docUrl);
     const isSheets = /https:\/\/docs\.google\.com\/spreadsheets\/d\//.test(docUrl);
 
-    if (!isDocs && !isSheets) return { statusCode: 400, headers: cors, body: 'Unsupported Google URL' };
+    if (!isDocs && !isSheets) {
+      return {
+        statusCode: 400,
+        headers: cors,
+        body: 'Unsupported Google URL',
+      };
+    }
 
     const documentId = isDocs
       ? (extractDocumentIdFromUrl(docUrl) || body.documentId)
