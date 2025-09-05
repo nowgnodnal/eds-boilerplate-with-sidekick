@@ -4,11 +4,8 @@
     {
       "id": "firefly-generate",
       "title": "Firefly 生成",
-      "url": "/tools/sidekick/firefly.js",
-      "environments": ["edit", "preview", "live", "google-docs"],
-      "includePaths": ["**/*.docx"]
+      "url": "https://main--eds-boilerplate-with-sidekick--nowgnodnal.aem.page/tools/sidekick/firefly.js",
+      "environments": ["edit", "preview", "live", "google-docs"]
     }
   ]
 }
-
-
