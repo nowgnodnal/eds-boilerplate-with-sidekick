@@ -1,0 +1,13 @@
+{
+  "project": "eds-boilerplate-with-sidekick",
+  "plugins": [
+    {
+      "id": "firefly-generate",
+      "title": "Firefly 生成",
+      "url": "/tools/sidekick/firefly.js",
+      "environments": ["edit", "preview", "live"]
+    }
+  ]
+}
+
+
