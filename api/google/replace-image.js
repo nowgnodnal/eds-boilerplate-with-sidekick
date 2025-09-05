@@ -166,7 +166,11 @@ export default async function main(request) {
         // Fallback: replace the first inline image in the document
         const firstImageEl = content
           .flatMap((block) => (block?.paragraph?.elements || []))
-          .find((el) => el.inlineObjectElement && typeof el.startIndex === 'number' && typeof el.endIndex === 'number');
+          .find((el) => (
+            el.inlineObjectElement
+            && typeof el.startIndex === 'number'
+            && typeof el.endIndex === 'number'
+          ));
         const firstImageRange = firstImageEl ? [firstImageEl.startIndex, firstImageEl.endIndex] : null;
 
         if (!firstImageRange) {
@@ -281,4 +285,3 @@ export default async function main(request) {
     return { statusCode: 500, headers: cors, body: String(e?.message || e) };
   }
 }
-
