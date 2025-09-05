@@ -5,7 +5,8 @@
       "id": "firefly-generate",
       "title": "Firefly 生成",
       "url": "/tools/sidekick/firefly.js",
-      "includePaths": ["/"]
+      "environments": ["edit"],
+      "includePaths": ["**.docx**"]
     }
   ]
 }

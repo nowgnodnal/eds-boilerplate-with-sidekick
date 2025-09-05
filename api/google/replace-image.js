@@ -156,7 +156,43 @@ export async function main(request) {
       }
 
       if (occurrences.length === 0) {
-        return { statusCode: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify({ replaced: 0 }) };
+        // Fallback: replace the first inline image in the document
+        let firstImageRange = null;
+        for (const block of content) {
+          const paragraph = block?.paragraph;
+          if (!paragraph) continue;
+          for (const el of (paragraph.elements || [])) {
+            const inlineObj = el.inlineObjectElement;
+            if (inlineObj && typeof el.startIndex === 'number' && typeof el.endIndex === 'number') {
+              firstImageRange = [el.startIndex, el.endIndex];
+              break;
+            }
+          }
+          if (firstImageRange) break;
+        }
+
+        if (!firstImageRange) {
+          return { statusCode: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify({ replaced: 0 }) };
+        }
+
+        const [s, e] = firstImageRange;
+        const requests = [
+          { deleteContentRange: { range: { startIndex: s, endIndex: e } } },
+          {
+            insertInlineImage: {
+              location: { index: s },
+              uri: imageUrl,
+              objectSize: {
+                width: { magnitude: Number(widthPt), unit: 'PT' },
+                height: { magnitude: Number(heightPt), unit: 'PT' },
+              },
+            },
+          },
+        ];
+
+        await batchUpdateDoc(accessToken, documentId, requests);
+
+        return { statusCode: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify({ replaced: 1, type: 'docs', mode: 'first-image' }) };
       }
 
       occurrences.sort((a, b) => b[0] - a[0]);
