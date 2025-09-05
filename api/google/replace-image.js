@@ -134,7 +134,13 @@ export default async function main(request) {
     const documentId = isDocs
       ? (extractDocumentIdFromUrl(docUrl) || body.documentId)
       : (/(?:\/spreadsheets\/d\/)([^/]+)/.exec(docUrl)?.[1] || body.documentId);
-    if (!documentId) return { statusCode: 400, headers: cors, body: 'Missing documentId' };
+    if (!documentId) {
+      return {
+        statusCode: 400,
+        headers: cors,
+        body: 'Missing documentId',
+      };
+    }
 
     const accessToken = await getGoogleAccessToken([
       'https://www.googleapis.com/auth/drive',
@@ -194,7 +200,11 @@ export default async function main(request) {
 
         const [s, e] = firstImageRange;
         const requests = [
-          { deleteContentRange: { range: { startIndex: s, endIndex: e } } },
+          {
+            deleteContentRange: {
+              range: { startIndex: s, endIndex: e },
+            },
+          },
           {
             insertInlineImage: {
               location: { index: s },
@@ -219,7 +229,11 @@ export default async function main(request) {
       const requests = occurrences
         .sort((a, b) => b[0] - a[0])
         .flatMap(([absStart, absEnd]) => ([
-          { deleteContentRange: { range: { startIndex: absStart, endIndex: absEnd } } },
+          {
+            deleteContentRange: {
+              range: { startIndex: absStart, endIndex: absEnd },
+            },
+          },
           {
             insertInlineImage: {
               location: { index: absStart },
@@ -251,7 +265,9 @@ export default async function main(request) {
       throw new Error(`Sheets get error ${metaRes.status}: ${t}`);
     }
     const meta = await metaRes.json();
-    const sheetTitles = (meta.sheets || []).map((s) => s.properties?.title).filter(Boolean);
+    const sheetTitles = (meta.sheets || [])
+      .map((s) => s.properties?.title)
+      .filter(Boolean);
 
     const getParams = new URLSearchParams({
       ranges: sheetTitles.map((t) => `${encodeURIComponent(t)}!A:Z`).join('&ranges='),
@@ -289,11 +305,17 @@ export default async function main(request) {
       };
     }
 
-    const updateRes = await fetch(`${SHEETS_API}/${documentId}/values:batchUpdate`, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ valueInputOption: 'USER_ENTERED', data }),
-    });
+    const updateRes = await fetch(
+      `${SHEETS_API}/${documentId}/values:batchUpdate`,
+      {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${accessToken}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ valueInputOption: 'USER_ENTERED', data }),
+      },
+    );
     if (!updateRes.ok) {
       const t = await updateRes.text();
       throw new Error(`Sheets batchUpdate error ${updateRes.status}: ${t}`);
