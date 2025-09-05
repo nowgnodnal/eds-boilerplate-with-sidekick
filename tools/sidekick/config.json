@@ -4,7 +4,7 @@
     {
       "id": "firefly-generate",
       "title": "Firefly 生成",
-      "url": "{{contentSourceUrl}}/tools/sidekick/firefly.html",
+      "url": "https://main--eds-boilerplate-with-sidekick--nowgnodnal.aem.page/tools/sidekick/firefly.html",
       "passConfig": true,
       "paletteRect": "top: 60px; bottom: 12px; right: 10px; left: auto; width:420px; height: calc(100vh - 72px)",
       "environments": ["edit", "preview", "live", "google-docs"]
