@@ -24,7 +24,6 @@ function base64url(input) {
     .replace(/\+/g, '-')
     .replace(/\//g, '_');
 }
-
 async function signJwt(header, claimSet, privateKeyPem) {
   const crypto = await import('node:crypto');
   const encHeader = base64url(JSON.stringify(header));
@@ -171,7 +170,11 @@ export default async function main(request) {
         const firstImageRange = firstImageEl ? [firstImageEl.startIndex, firstImageEl.endIndex] : null;
 
         if (!firstImageRange) {
-          return { statusCode: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify({ replaced: 0 }) };
+          return {
+            statusCode: 200,
+            headers: { ...cors, 'content-type': 'application/json' },
+            body: JSON.stringify({ replaced: 0 }),
+          };
         }
 
         const [s, e] = firstImageRange;
@@ -243,9 +246,9 @@ export default async function main(request) {
     // Build batch update
     const data = (valuesData.valueRanges || [])
       .map((vr) => {
-        const range = vr.range; // e.g., 'Sheet1!A1:Z1000'
+        const { range, values = [] } = vr; // e.g., 'Sheet1!A1:Z1000'
         const [sheet] = range.split('!');
-        const rows = (vr.values || []).map((row) => row.map((cell) => (
+        const rows = values.map((row) => row.map((cell) => (
           typeof cell === 'string' && cell.includes(placeholder)
             ? `=IMAGE("${imageUrl}")`
             : cell
