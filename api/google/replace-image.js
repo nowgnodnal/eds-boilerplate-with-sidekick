@@ -1,8 +1,9 @@
 import { buildCorsHeaders, handleOptions } from '../_shared/cors.js';
 
 /*
-  Replaces placeholder text (e.g., {{images}}) in a Google Doc with an inline image by URL.
-  Also supports Google Sheets: finds cells containing the placeholder and replaces with =IMAGE(url) formula or sets cell with image (basic).
+  Replaces placeholder text (e.g., {{images}}) in a Google Doc with an inline
+  image by URL. Also supports Google Sheets: finds cells containing the
+  placeholder and replaces with =IMAGE(url) formula.
   Auth model: Service Account with Domain-Wide Delegation recommended.
 
   Required env vars:
@@ -96,7 +97,7 @@ function extractDocumentIdFromUrl(docUrl) {
   return m ? m[1] : null;
 }
 
-export async function main(request) {
+export default async function main(request) {
   const origin = request?.headers?.origin || request?.headers?.Origin;
   const cors = buildCorsHeaders(origin);
   if (request?.method === 'OPTIONS') return handleOptions(request);
@@ -218,7 +219,9 @@ export async function main(request) {
 
     // SHEETS: find all cells matching placeholder and replace with =IMAGE(url)
     // 1) get values for all sheets
-    const metaRes = await fetch(`${SHEETS_API}/${documentId}`, { headers: { authorization: `Bearer ${accessToken}` } });
+    const metaRes = await fetch(`${SHEETS_API}/${documentId}`, {
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
     if (!metaRes.ok) {
       const t = await metaRes.text();
       throw new Error(`Sheets get error ${metaRes.status}: ${t}`);
@@ -226,7 +229,11 @@ export async function main(request) {
     const meta = await metaRes.json();
     const sheetTitles = (meta.sheets || []).map((s) => s.properties?.title).filter(Boolean);
 
-    const getRes = await fetch(`${SHEETS_API}/${documentId}/values:batchGet?${new URLSearchParams({ ranges: sheetTitles.map((t) => `${encodeURIComponent(t)}!A:Z`).join('&ranges='), majorDimension: 'ROWS' })}`, {
+    const getParams = new URLSearchParams({
+      ranges: sheetTitles.map((t) => `${encodeURIComponent(t)}!A:Z`).join('&ranges='),
+      majorDimension: 'ROWS',
+    });
+    const getRes = await fetch(`${SHEETS_API}/${documentId}/values:batchGet?${getParams}`, {
       headers: { authorization: `Bearer ${accessToken}` },
     });
     if (!getRes.ok) {
@@ -236,25 +243,19 @@ export async function main(request) {
     const valuesData = await getRes.json();
 
     // Build batch update
-    const data = [];
-    valuesData.valueRanges?.forEach((vr) => {
-      const range = vr.range; // e.g., 'Sheet1!A1:Z1000'
-      const [sheet] = range.split('!');
-      const rows = vr.values || [];
-      let changed = false;
-      rows.forEach((row, r) => {
-        row.forEach((cell, c) => {
-          if (typeof cell === 'string' && cell.includes(placeholder)) {
-            // Replace the entire cell with =IMAGE("url")
-            row[c] = `=IMAGE("${imageUrl}")`;
-            changed = true;
-          }
-        });
-      });
-      if (changed) {
-        data.push({ range: `${sheet}!A1`, majorDimension: 'ROWS', values: rows });
-      }
-    });
+    const data = (valuesData.valueRanges || [])
+      .map((vr) => {
+        const range = vr.range; // e.g., 'Sheet1!A1:Z1000'
+        const [sheet] = range.split('!');
+        const rows = (vr.values || []).map((row) => row.map((cell) => (
+          typeof cell === 'string' && cell.includes(placeholder)
+            ? `=IMAGE("${imageUrl}")`
+            : cell
+        )));
+        const changed = rows.some((row) => row.some((cell) => typeof cell === 'string' && cell.startsWith('=IMAGE(')));
+        return changed ? { range: `${sheet}!A1`, majorDimension: 'ROWS', values: rows } : null;
+      })
+      .filter(Boolean);
 
     if (data.length === 0) {
       return { statusCode: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify({ replaced: 0, type: 'sheets' }) };
@@ -275,5 +276,4 @@ export async function main(request) {
     return { statusCode: 500, headers: cors, body: String(e?.message || e) };
   }
 }
-
 

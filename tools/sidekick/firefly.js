@@ -15,14 +15,14 @@ export default function decorate(config, api) {
       text: 'Firefly 生成',
       action: async () => {
         try {
-          const prompt = window.prompt('生成したい画像のプロンプトを入力してください:');
+          const prompt = window.prompt('生成したい画像のプロンプトを入力してください:'); // eslint-disable-line no-alert
           if (!prompt) return;
 
           // Call serverless function to generate the image via Firefly
           const genResp = await fetch('/api/firefly/generate', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ prompt })
+            body: JSON.stringify({ prompt }),
           });
           if (!genResp.ok) {
             const t = await genResp.text();
@@ -40,7 +40,7 @@ export default function decorate(config, api) {
           const repResp = await fetch('/api/google/replace-image', {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify(replacePayload)
+            body: JSON.stringify(replacePayload),
           });
           if (!repResp.ok) {
             const t = await repResp.text();
@@ -51,7 +51,7 @@ export default function decorate(config, api) {
         } catch (e) {
           // eslint-disable-next-line no-console
           console.error('Firefly plugin error', e);
-          alert(`Firefly エラー: ${e.message}`);
+          alert(`Firefly エラー: ${e.message}`); // eslint-disable-line no-alert
         }
       },
     },
@@ -63,5 +63,4 @@ async function detectSelectedImageContext() {
   // サーバ側で docUrl から対象画像を特定する実装を推奨。
   return null;
 }
-
 

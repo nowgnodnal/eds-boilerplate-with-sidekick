@@ -65,7 +65,7 @@ async function generateImage(prompt, size) {
   return { data, imageUrl };
 }
 
-export async function main(request) {
+export default async function main(request) {
   const origin = request?.headers?.origin || request?.headers?.Origin;
   const cors = buildCorsHeaders(origin);
 
@@ -94,5 +94,3 @@ export async function main(request) {
     };
   }
 }
-
-
