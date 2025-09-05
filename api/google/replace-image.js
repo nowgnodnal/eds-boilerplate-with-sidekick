@@ -112,7 +112,13 @@ export default async function main(request) {
       widthPt = 200,
       heightPt = 200,
     } = body;
-    if (!docUrl || !imageUrl) return { statusCode: 400, headers: cors, body: 'Missing docUrl or imageUrl' };
+    if (!docUrl || !imageUrl) {
+      return {
+        statusCode: 400,
+        headers: cors,
+        body: 'Missing docUrl or imageUrl',
+      };
+    }
 
     // Detect Docs or Sheets by URL
     const isDocs = /https:\/\/docs\.google\.com\/document\/d\//.test(docUrl);
@@ -198,7 +204,11 @@ export default async function main(request) {
 
         await batchUpdateDoc(accessToken, documentId, requests);
 
-        return { statusCode: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify({ replaced: 1, type: 'docs', mode: 'first-image' }) };
+        return {
+          statusCode: 200,
+          headers: { ...cors, 'content-type': 'application/json' },
+          body: JSON.stringify({ replaced: 1, type: 'docs', mode: 'first-image' }),
+        };
       }
 
       const requests = occurrences
@@ -219,7 +229,11 @@ export default async function main(request) {
 
       await batchUpdateDoc(accessToken, documentId, requests);
 
-      return { statusCode: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify({ replaced: occurrences.length, type: 'docs' }) };
+      return {
+        statusCode: 200,
+        headers: { ...cors, 'content-type': 'application/json' },
+        body: JSON.stringify({ replaced: occurrences.length, type: 'docs' }),
+      };
     }
 
     // SHEETS: find all cells matching placeholder and replace with =IMAGE(url)
@@ -263,7 +277,11 @@ export default async function main(request) {
       .filter(Boolean);
 
     if (data.length === 0) {
-      return { statusCode: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify({ replaced: 0, type: 'sheets' }) };
+      return {
+        statusCode: 200,
+        headers: { ...cors, 'content-type': 'application/json' },
+        body: JSON.stringify({ replaced: 0, type: 'sheets' }),
+      };
     }
 
     const updateRes = await fetch(`${SHEETS_API}/${documentId}/values:batchUpdate`, {
