@@ -1,9 +1,9 @@
-# Your Project's Title...
+# eds-boilerplate-with-sidekick
 Your project's description...
 
 ## Environments
-- Preview: https://main--{repo}--{owner}.aem.page/
-- Live: https://main--{repo}--{owner}.aem.live/
+- Preview: https://main--eds-boilerplate-with-sidekick--nowgnodnal.aem.page
+- Live: https://main--eds-boilerplate-with-sidekick--nowgnodnal.aem.live
 
 ## Documentation
 
