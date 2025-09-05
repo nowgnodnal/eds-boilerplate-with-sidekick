@@ -97,68 +97,44 @@ function promptForText() {
 }
 
 export default function decorate(config, api) {
-  api.add({
-    id: 'firefly-generate',
-    condition: () => true,
-    button: {
-      text: 'Firefly 生成',
-      action: async () => {
-        try {
-          const target = await detectSelectedImageContext();
-          if (!isGoogleDocs() && !target) {
-            api.notify?.('まず置き換えたい画像をクリックしてください。', 3000);
-            return;
-          }
+  // このJSは palette 上の firefly.html から利用されるヘルパーとして保持
+  api.firefly = {
+    isGoogleDocs,
+    detectSelectedImageContext,
+    async generateAndReplace(prompt) {
+      const target = await detectSelectedImageContext();
+      const genResp = await fetch('/api/firefly/generate', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
+      if (!genResp.ok) {
+        const t = await genResp.text();
+        throw new Error(`generate failed: ${genResp.status} ${t}`);
+      }
+      const { imageUrl } = await genResp.json();
+      if (!imageUrl) throw new Error('No imageUrl returned');
 
-          const prompt = await promptForText();
-          if (!prompt) return;
-
-          // Call serverless function to generate the image via Firefly
-          const genResp = await fetch('/api/firefly/generate', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ prompt }),
-          });
-          if (!genResp.ok) {
-            const t = await genResp.text();
-            throw new Error(`generate failed: ${genResp.status} ${t}`);
-          }
-          const { imageUrl } = await genResp.json();
-          if (!imageUrl) throw new Error('No imageUrl returned');
-
-          if (isGoogleDocs()) {
-            // Replace in Google Doc via backend to avoid CORS/auth issues
-            const replacePayload = {
-              docUrl: window.location.href,
-              target: null,
-              imageUrl,
-            };
-            const repResp = await fetch('/api/google/replace-image', {
-              method: 'POST',
-              headers: { 'content-type': 'application/json' },
-              body: JSON.stringify(replacePayload),
-            });
-            if (!repResp.ok) {
-              const t = await repResp.text();
-              throw new Error(`replace failed: ${repResp.status} ${t}`);
-            }
-            api.notify?.('画像を置き換えました。', 2000);
-            return;
-          }
-
-          // Replace on the current page by swapping IMG src
-          if (target && target.tagName === 'IMG') {
-            const cacheBusted = `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
-            target.src = cacheBusted;
-            target.srcset = '';
-            api.notify?.('画像を置き換えました。', 2000);
-          }
-        } catch (e) {
-          // eslint-disable-next-line no-console
-          console.error('Firefly plugin error', e);
-          alert(`Firefly エラー: ${e.message}`); // eslint-disable-line no-alert
+      if (isGoogleDocs()) {
+        const repResp = await fetch('/api/google/replace-image', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ docUrl: window.location.href, target: null, imageUrl }),
+        });
+        if (!repResp.ok) {
+          const t = await repResp.text();
+          throw new Error(`replace failed: ${repResp.status} ${t}`);
         }
-      },
+        return { replaced: true, imageUrl };
+      }
+
+      if (target && target.tagName === 'IMG') {
+        const cacheBusted = `${imageUrl}${imageUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
+        target.src = cacheBusted;
+        target.srcset = '';
+        return { replaced: true, imageUrl };
+      }
+      return { replaced: false, imageUrl };
     },
-  });
+  };
 }

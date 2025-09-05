@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Firefly 生成</title>
+    <style>
+      body { margin: 0; font: 14px/1.4 -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Noto Sans JP, Helvetica, Arial, sans-serif; }
+      .wrap { display: flex; flex-direction: column; height: 100vh; }
+      header { padding: 12px; font-weight: 600; border-bottom: 1px solid #eee; }
+      main { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+      textarea { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #ddd; border-radius: 6px; resize: vertical; }
+      .actions { display: flex; gap: 8px; justify-content: flex-end; padding: 12px; border-top: 1px solid #eee; }
+      button { appearance: none; border-radius: 6px; padding: 6px 12px; border: 1px solid #ccc; background: #fff; }
+      button.primary { background: #1473e6; color: #fff; border-color: #1473e6; }
+      .hint { color: #666; font-size: 12px; }
+      .status { font-size: 12px; color: #1473e6; min-height: 18px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>Firefly 画像生成</header>
+      <main>
+        <label>
+          プロンプト
+          <textarea id="prompt" rows="4" placeholder="例: 海辺の夕焼けで走る犬、やわらかい光"></textarea>
+        </label>
+        <div class="hint">ページ上の画像をクリックで選択してから実行してください（Google Docs は自動検出）。</div>
+        <div class="status" id="status"></div>
+      </main>
+      <div class="actions">
+        <button id="cancel">キャンセル</button>
+        <button class="primary" id="run">生成して置換</button>
+      </div>
+    </div>
+    <script type="module">
+      const qs = (s) => document.querySelector(s);
+      const promptEl = qs('#prompt');
+      const statusEl = qs('#status');
+      const closePalette = () => {
+        try { window.hlx?.sidekick?.dispatchEvent(new CustomEvent('closepalette')); } catch (e) {}
+      };
+
+      function setStatus(msg) {
+        statusEl.textContent = msg || '';
+      }
+
+      async function generateAndReplace() {
+        const prompt = (promptEl.value || '').trim();
+        if (!prompt) { setStatus('プロンプトを入力してください'); return; }
+        setStatus('生成中...');
+        try {
+          const api = window.__sa_api || window; // fallback
+          const res = await (api.firefly?.generateAndReplace?.(prompt));
+          if (res?.replaced) {
+            setStatus('画像を置き換えました');
+            setTimeout(closePalette, 500);
+          } else {
+            setStatus('置換対象の画像が見つかりません');
+          }
+        } catch (e) {
+          setStatus(`エラー: ${e?.message || e}`);
+        }
+      }
+
+      qs('#run').addEventListener('click', generateAndReplace);
+      qs('#cancel').addEventListener('click', closePalette);
+      promptEl.addEventListener('keydown', (ev) => {
+        if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === 'enter') generateAndReplace();
+      });
+    </script>
+  </body>
+  </html>
+
+
