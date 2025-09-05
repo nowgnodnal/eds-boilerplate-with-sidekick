@@ -103,8 +103,16 @@ export default async function main(request) {
   if (request?.method === 'OPTIONS') return handleOptions(request);
 
   try {
-    const body = typeof request?.body === 'string' ? JSON.parse(request.body || '{}') : (request?.body || {});
-    const { docUrl, imageUrl, placeholder = '{{images}}', widthPt = 200, heightPt = 200 } = body;
+    const body = typeof request?.body === 'string'
+      ? JSON.parse(request.body || '{}')
+      : (request?.body || {});
+    const {
+      docUrl,
+      imageUrl,
+      placeholder = '{{images}}',
+      widthPt = 200,
+      heightPt = 200,
+    } = body;
     if (!docUrl || !imageUrl) return { statusCode: 400, headers: cors, body: 'Missing docUrl or imageUrl' };
 
     // Detect Docs or Sheets by URL
@@ -134,43 +142,33 @@ export default async function main(request) {
       }
       const doc = await docRes.json();
       const content = doc?.body?.content || [];
-      const occurrences = [];
-      for (const block of content) {
-        const paragraph = block?.paragraph;
-        if (!paragraph) continue;
-        for (const el of (paragraph.elements || [])) {
+      const occurrences = content
+        .flatMap((block) => (block?.paragraph?.elements || []))
+        .flatMap((el) => {
           const tr = el.textRun;
-          if (!tr) continue;
-          const text = tr.content || '';
-          const startIndex = el.startIndex;
-          if (typeof startIndex !== 'number') continue;
+          const text = tr?.content || '';
+          const { startIndex } = el;
+          if (typeof startIndex !== 'number' || !text) return [];
+          const ranges = [];
           let from = 0;
+          // eslint-disable-next-line no-constant-condition
           while (true) {
             const pos = text.indexOf(placeholder, from);
             if (pos === -1) break;
             const absStart = startIndex + pos;
             const absEnd = absStart + placeholder.length;
-            occurrences.push([absStart, absEnd]);
+            ranges.push([absStart, absEnd]);
             from = pos + placeholder.length;
           }
-        }
-      }
+          return ranges;
+        });
 
       if (occurrences.length === 0) {
         // Fallback: replace the first inline image in the document
-        let firstImageRange = null;
-        for (const block of content) {
-          const paragraph = block?.paragraph;
-          if (!paragraph) continue;
-          for (const el of (paragraph.elements || [])) {
-            const inlineObj = el.inlineObjectElement;
-            if (inlineObj && typeof el.startIndex === 'number' && typeof el.endIndex === 'number') {
-              firstImageRange = [el.startIndex, el.endIndex];
-              break;
-            }
-          }
-          if (firstImageRange) break;
-        }
+        const firstImageEl = content
+          .flatMap((block) => (block?.paragraph?.elements || []))
+          .find((el) => el.inlineObjectElement && typeof el.startIndex === 'number' && typeof el.endIndex === 'number');
+        const firstImageRange = firstImageEl ? [firstImageEl.startIndex, firstImageEl.endIndex] : null;
 
         if (!firstImageRange) {
           return { statusCode: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify({ replaced: 0 }) };
@@ -196,21 +194,21 @@ export default async function main(request) {
         return { statusCode: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify({ replaced: 1, type: 'docs', mode: 'first-image' }) };
       }
 
-      occurrences.sort((a, b) => b[0] - a[0]);
-      const requests = [];
-      for (const [absStart, absEnd] of occurrences) {
-        requests.push({ deleteContentRange: { range: { startIndex: absStart, endIndex: absEnd } } });
-        requests.push({
-          insertInlineImage: {
-            location: { index: absStart },
-            uri: imageUrl,
-            objectSize: {
-              width: { magnitude: Number(widthPt), unit: 'PT' },
-              height: { magnitude: Number(heightPt), unit: 'PT' },
+      const requests = occurrences
+        .sort((a, b) => b[0] - a[0])
+        .flatMap(([absStart, absEnd]) => ([
+          { deleteContentRange: { range: { startIndex: absStart, endIndex: absEnd } } },
+          {
+            insertInlineImage: {
+              location: { index: absStart },
+              uri: imageUrl,
+              objectSize: {
+                width: { magnitude: Number(widthPt), unit: 'PT' },
+                height: { magnitude: Number(heightPt), unit: 'PT' },
+              },
             },
           },
-        });
-      }
+        ]));
 
       await batchUpdateDoc(accessToken, documentId, requests);
 
@@ -271,7 +269,11 @@ export default async function main(request) {
       throw new Error(`Sheets batchUpdate error ${updateRes.status}: ${t}`);
     }
 
-    return { statusCode: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify({ replaced: true, type: 'sheets' }) };
+    return {
+      statusCode: 200,
+      headers: { ...cors, 'content-type': 'application/json' },
+      body: JSON.stringify({ replaced: true, type: 'sheets' }),
+    };
   } catch (e) {
     return { statusCode: 500, headers: cors, body: String(e?.message || e) };
   }

@@ -7,6 +7,12 @@
       POST /api/google/replace-image -> { ok: true }
 */
 
+async function detectSelectedImageContext() {
+  // Google Docs のDOMは保護されているため、ここでは常にnullにフォールバック。
+  // サーバ側で docUrl から対象画像を特定する実装を推奨。
+  return null;
+}
+
 export default function decorate(config, api) {
   api.add({
     id: 'firefly-generate',
@@ -57,10 +63,3 @@ export default function decorate(config, api) {
     },
   });
 }
-
-async function detectSelectedImageContext() {
-  // Google Docs のDOMは保護されているため、ここでは常にnullにフォールバック。
-  // サーバ側で docUrl から対象画像を特定する実装を推奨。
-  return null;
-}
-
