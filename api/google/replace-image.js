@@ -188,7 +188,9 @@ export default async function main(request) {
             && typeof el.startIndex === 'number'
             && typeof el.endIndex === 'number'
           ));
-        const firstImageRange = firstImageEl ? [firstImageEl.startIndex, firstImageEl.endIndex] : null;
+        const firstImageRange = firstImageEl
+          ? [firstImageEl.startIndex, firstImageEl.endIndex]
+          : null;
 
         if (!firstImageRange) {
           return {
