@@ -110,6 +110,7 @@ export default async function main(request) {
       placeholder = '{{images}}',
       widthPt = 200,
       heightPt = 200,
+      range,
     } = body;
     if (!docUrl || !imageUrl) {
       return {
@@ -284,7 +285,24 @@ export default async function main(request) {
     }
     const valuesData = await getRes.json();
 
-    // Build batch update
+    // If a specific range was provided, update only that cell with =IMAGE(url)
+    if (range) {
+      const updateOne = await fetch(`${SHEETS_API}/${documentId}/values:batchUpdate`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          valueInputOption: 'USER_ENTERED',
+          data: [{ range, values: [[`=IMAGE("${imageUrl}")`]] }],
+        }),
+      });
+      if (!updateOne.ok) {
+        const t = await updateOne.text();
+        throw new Error(`Sheets single update error ${updateOne.status}: ${t}`);
+      }
+      return { statusCode: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify({ replaced: 1, type: 'sheets', range }) };
+    }
+
+    // Build batch update for placeholder replacement across all sheets
     const data = (valuesData.valueRanges || [])
       .map((vr) => {
         const { range, values = [] } = vr; // e.g., 'Sheet1!A1:Z1000'
