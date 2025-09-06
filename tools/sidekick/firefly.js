@@ -30,7 +30,7 @@ export default function decorate(config, api) {
   api.firefly = {
     isGoogleDocs,
     detectSelectedImageContext,
-    async generateAndReplace(prompt, options = {}) {
+    async generateAndReplace(prompt) {
       const target = await detectSelectedImageContext();
       const genResp = await fetch('/api/firefly/generate', {
         method: 'POST',
@@ -58,7 +58,7 @@ export default function decorate(config, api) {
         const repResp = await fetch('/api/google/replace-image', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ docUrl: window.location.href, targetIndex, imageUrl, range: options.range || null }),
+          body: JSON.stringify({ docUrl: window.location.href, targetIndex, imageUrl }),
         });
         if (!repResp.ok) {
           const t = await repResp.text();
