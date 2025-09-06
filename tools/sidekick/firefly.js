@@ -20,8 +20,8 @@ function isGoogleDocs() {
 
 async function detectSelectedImageContext() {
   // Google Docs のDOMは保護されているため、ここでは常にnullにフォールバック。
-  // サーバ側で docUrl から対象画像を特定する実装を推奨。
-  if (isGoogleDocs()) return null;
+  // 可能であればクリックされた IMG を利用（Docs でも DOM に IMG が存在するケースあり）。
+  if (isGoogleDocs()) return lastClickedImageEl || null;
   return lastClickedImageEl || document.querySelector('img');
 }
 
@@ -45,10 +45,20 @@ export default function decorate(config, api) {
       if (!imageUrl) throw new Error('No imageUrl returned');
 
       if (isGoogleDocs()) {
+        let targetIndex = null;
+        if (target) {
+          try {
+            const imgs = Array.from(document.querySelectorAll('img'));
+            const idx = imgs.indexOf(target);
+            if (idx >= 0) targetIndex = idx;
+          } catch (e) {
+            // ignore
+          }
+        }
         const repResp = await fetch('/api/google/replace-image', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ docUrl: window.location.href, target: null, imageUrl, range: options.range || null }),
+          body: JSON.stringify({ docUrl: window.location.href, targetIndex, imageUrl, range: options.range || null }),
         });
         if (!repResp.ok) {
           const t = await repResp.text();

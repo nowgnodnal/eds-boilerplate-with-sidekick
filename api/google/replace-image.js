@@ -111,6 +111,7 @@ export default async function main(request) {
       widthPt = 200,
       heightPt = 200,
       range,
+      targetIndex,
     } = body;
     if (!docUrl || !imageUrl) {
       return {
@@ -180,7 +181,7 @@ export default async function main(request) {
           return ranges;
         });
 
-      if (occurrences.length === 0) {
+      if (occurrences.length === 0 && (typeof targetIndex !== 'number')) {
         // Fallback: replace the first inline image in the document
         const firstImageEl = content
           .flatMap((block) => (block?.paragraph?.elements || []))
@@ -227,6 +228,46 @@ export default async function main(request) {
           headers: { ...cors, 'content-type': 'application/json' },
           body: JSON.stringify({ replaced: 1, type: 'docs', mode: 'first-image' }),
         };
+      }
+
+      // If targetIndex provided, map to the N-th inline image position
+      if (typeof targetIndex === 'number') {
+        let count = -1;
+        let selectedRange = null;
+        for (const block of content) {
+          const paragraph = block?.paragraph;
+          if (!paragraph) continue;
+          for (const el of (paragraph.elements || [])) {
+            const inlineObj = el.inlineObjectElement;
+            if (inlineObj && typeof el.startIndex === 'number' && typeof el.endIndex === 'number') {
+              count += 1;
+              if (count === targetIndex) {
+                selectedRange = [el.startIndex, el.endIndex];
+                break;
+              }
+            }
+          }
+          if (selectedRange) break;
+        }
+        if (selectedRange) {
+          const [s, e] = selectedRange;
+          const requests = [
+            { deleteContentRange: { range: { startIndex: s, endIndex: e } } },
+            {
+              insertInlineImage: {
+                location: { index: s },
+                uri: imageUrl,
+                objectSize: {
+                  width: { magnitude: Number(widthPt), unit: 'PT' },
+                  height: { magnitude: Number(heightPt), unit: 'PT' },
+                },
+              },
+            },
+          ];
+          await batchUpdateDoc(accessToken, documentId, requests);
+          return { statusCode: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify({ replaced: 1, type: 'docs', mode: 'nth-image', index: targetIndex }) };
+        }
+        // fallthrough to occurrences replacement
       }
 
       const requests = occurrences
