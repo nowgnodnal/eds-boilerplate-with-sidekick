@@ -14,7 +14,10 @@
       button { appearance: none; border-radius: 6px; padding: 6px 12px; border: 1px solid #ccc; background: #fff; }
       button.primary { background: #1473e6; color: #fff; border-color: #1473e6; }
       .hint { color: #666; font-size: 12px; }
-      .status { font-size: 12px; color: #1473e6; min-height: 18px; }
+      .status { font-size: 12px; color: #1473e6; min-height: 18px; display: flex; align-items: center; gap: 8px; }
+      .spinner { display: none; width: 14px; height: 14px; border: 2px solid #1473e6; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; }
+      .loading .spinner { display: inline-block; }
+      @keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
     </style>
   </head>
   <body>
@@ -26,7 +29,7 @@
           <textarea id="prompt" rows="4" placeholder="例: 海辺の夕焼けで走る犬、やわらかい光"></textarea>
         </label>
         <div class="hint">ページ上の画像をクリックで選択してから実行してください（Google Docs は自動検出）。</div>
-        <div class="status" id="status"></div>
+        <div class="status" id="status"><span class="spinner" id="spinner"></span><span id="statusText"></span></div>
       </main>
       <div class="actions">
         <button id="cancel">キャンセル</button>
@@ -37,18 +40,26 @@
       const qs = (s) => document.querySelector(s);
       const promptEl = qs('#prompt');
       const statusEl = qs('#status');
+      const statusTextEl = qs('#statusText');
+      const spinnerEl = qs('#spinner');
+      const runBtn = qs('#run');
       const closePalette = () => {
         try { window.hlx?.sidekick?.dispatchEvent(new CustomEvent('closepalette')); } catch (e) {}
       };
 
-      function setStatus(msg) {
-        statusEl.textContent = msg || '';
+      function setStatus(msg, isLoading = false) {
+        statusTextEl.textContent = msg || '';
+        document.body.classList.toggle('loading', !!isLoading);
+        runBtn.disabled = !!isLoading;
+        runBtn.setAttribute('aria-busy', isLoading ? 'true' : 'false');
       }
 
       function generateAndReplace() {
         const prompt = (promptEl.value || '').trim();
         if (!prompt) { setStatus('プロンプトを入力してください'); return; }
-        setStatus('生成中...');
+        // eslint-disable-next-line no-console
+        console.log('[Firefly Palette] Generate clicked');
+        setStatus('生成中...', true);
         try {
           window.parent.postMessage({ type: 'firefly:generate', prompt }, '*');
         } catch (e) {
@@ -60,14 +71,14 @@
         const { data } = ev;
         if (!data || data.type !== 'firefly:result') return;
         if (data.error) {
-          setStatus(`エラー: ${data.error}`);
+          setStatus(`エラー: ${data.error}`, false);
           return;
         }
         if (data.res?.replaced) {
-          setStatus('画像を置き換えました');
+          setStatus('画像を置き換えました', false);
           setTimeout(closePalette, 500);
         } else {
-          setStatus('置換対象の画像が見つかりません');
+          setStatus('置換対象の画像が見つかりません', false);
         }
       });
 

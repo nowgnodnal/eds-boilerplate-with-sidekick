@@ -125,9 +125,21 @@ export default function decorate(config, api) {
     const { data } = ev;
     if (!data || data.type !== 'firefly:generate') return;
     try {
+      // ensure an image is selected / inferable
+      const tentative = await detectSelectedImageContext();
+      if (!tentative && isGoogleDocs() && !getDocsBubbleRect()) {
+        window.postMessage({ type: 'firefly:result', error: '置換対象の画像が見つかりません（画像をクリックして選択してください）' }, '*');
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.log('[Firefly Plugin] Generating with prompt:', data.prompt);
       const res = await api.firefly.generateAndReplace(String(data.prompt || ''));
+      // eslint-disable-next-line no-console
+      console.log('[Firefly Plugin] Generate result:', res);
       window.postMessage({ type: 'firefly:result', res }, '*');
     } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('[Firefly Plugin] Error:', e);
       window.postMessage({ type: 'firefly:result', error: String(e?.message || e) }, '*');
     }
   });
