@@ -18,6 +18,42 @@ function isGoogleDocs() {
   return /https:\/\/docs\.google\.com\//.test(window.location.href);
 }
 
+function getDocsBubbleRect() {
+  try {
+    const el = document.querySelector(
+      '.docs-bubble.kix-embedded-entity-bubble',
+    );
+    if (!el) return null;
+    return el.getBoundingClientRect();
+  } catch (e) {
+    return null;
+  }
+}
+
+function findNearestImageIndex(point) {
+  try {
+    const imgs = Array.from(document.querySelectorAll('img'));
+    if (imgs.length === 0) return null;
+    let bestIdx = null;
+    let bestDist = Number.POSITIVE_INFINITY;
+    imgs.forEach((img, i) => {
+      const r = img.getBoundingClientRect();
+      const cx = r.left + (r.width / 2);
+      const cy = r.top + (r.height / 2);
+      const dx = cx - point.x;
+      const dy = cy - point.y;
+      const d2 = (dx * dx) + (dy * dy);
+      if (d2 < bestDist) {
+        bestDist = d2;
+        bestIdx = i;
+      }
+    });
+    return bestIdx;
+  } catch (e) {
+    return null;
+  }
+}
+
 async function detectSelectedImageContext() {
   // Google Docs のDOMは保護されているため、ここでは常にnullにフォールバック。
   // 可能であればクリックされた IMG を利用（Docs でも DOM に IMG が存在するケースあり）。
@@ -53,6 +89,13 @@ export default function decorate(config, api) {
             if (idx >= 0) targetIndex = idx;
           } catch (e) {
             // ignore
+          }
+        }
+        if (targetIndex == null) {
+          const bubble = getDocsBubbleRect();
+          if (bubble) {
+            const idx2 = findNearestImageIndex({ x: bubble.left, y: bubble.top });
+            if (typeof idx2 === 'number' && idx2 >= 0) targetIndex = idx2;
           }
         }
         const repResp = await fetch('/api/google/replace-image', {
