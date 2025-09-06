@@ -4,13 +4,16 @@
     {
       "id": "firefly-generate",
       "title": "Firefly 生成",
-      "url": "https://main--eds-boilerplate-with-sidekick--nowgnodnal.aem.page/tools/sidekick/firefly.js",
-      "palette": {
-        "url": "https://main--eds-boilerplate-with-sidekick--nowgnodnal.aem.page/tools/sidekick/firefly.html",
-        "passConfig": true,
-        "rect": "top: 60px; bottom: 12px; right: 10px; left: auto; width:420px; height: calc(100vh - 72px)"
-      },
-      "environments": ["edit", "preview", "live", "google-docs"]
+      "environments": [
+          "edit"
+      ],
+      "isPalette": true,
+      "includePaths": [
+          "**.docx**"
+      ],
+      "passConfig": true,
+      "paletteRect": "top: 60px; bottom: 12px; right: 10px; left: auto; width:420px; height: calc(100vh - 72px)",
+      "url": "https://main--eds-boilerplate-with-sidekick--nowgnodnal.aem.page/tools/sidekick/firefly.html",
     }
   ]
 }
