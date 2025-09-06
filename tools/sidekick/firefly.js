@@ -119,4 +119,16 @@ export default function decorate(config, api) {
       return { replaced: false, imageUrl };
     },
   };
+
+  // Palette からの postMessage を受け取り、生成→置換を実行
+  window.addEventListener('message', async (ev) => {
+    const { data } = ev;
+    if (!data || data.type !== 'firefly:generate') return;
+    try {
+      const res = await api.firefly.generateAndReplace(String(data.prompt || ''));
+      window.postMessage({ type: 'firefly:result', res }, '*');
+    } catch (e) {
+      window.postMessage({ type: 'firefly:result', error: String(e?.message || e) }, '*');
+    }
+  });
 }

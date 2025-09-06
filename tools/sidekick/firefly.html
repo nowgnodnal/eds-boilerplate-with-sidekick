@@ -45,23 +45,31 @@
         statusEl.textContent = msg || '';
       }
 
-      async function generateAndReplace() {
+      function generateAndReplace() {
         const prompt = (promptEl.value || '').trim();
         if (!prompt) { setStatus('プロンプトを入力してください'); return; }
         setStatus('生成中...');
         try {
-          const api = window.__sa_api || window; // fallback
-          const res = await (api.firefly?.generateAndReplace?.(prompt));
-          if (res?.replaced) {
-            setStatus('画像を置き換えました');
-            setTimeout(closePalette, 500);
-          } else {
-            setStatus('置換対象の画像が見つかりません');
-          }
+          window.parent.postMessage({ type: 'firefly:generate', prompt }, '*');
         } catch (e) {
           setStatus(`エラー: ${e?.message || e}`);
         }
       }
+
+      window.addEventListener('message', (ev) => {
+        const { data } = ev;
+        if (!data || data.type !== 'firefly:result') return;
+        if (data.error) {
+          setStatus(`エラー: ${data.error}`);
+          return;
+        }
+        if (data.res?.replaced) {
+          setStatus('画像を置き換えました');
+          setTimeout(closePalette, 500);
+        } else {
+          setStatus('置換対象の画像が見つかりません');
+        }
+      });
 
       qs('#run').addEventListener('click', generateAndReplace);
       qs('#cancel').addEventListener('click', closePalette);
