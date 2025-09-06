@@ -18,6 +18,17 @@ function isGoogleDocs() {
   return /https:\/\/docs\.google\.com\//.test(window.location.href);
 }
 
+async function fetchWithTimeout(url, options = {}, timeoutMs = 30000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: ctrl.signal });
+    return res;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 function getDocsBubbleRect() {
   try {
     const el = document.querySelector(
@@ -68,11 +79,15 @@ export default function decorate(config, api) {
     detectSelectedImageContext,
     async generateAndReplace(prompt) {
       const target = await detectSelectedImageContext();
-      const genResp = await fetch('/api/firefly/generate', {
+      // eslint-disable-next-line no-console
+      console.log('[Firefly Plugin] Calling /api/firefly/generate');
+      const genResp = await fetchWithTimeout('/api/firefly/generate', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ prompt }),
-      });
+      }, 45000);
+      // eslint-disable-next-line no-console
+      console.log('[Firefly Plugin] /api/firefly/generate status:', genResp.status);
       if (!genResp.ok) {
         const t = await genResp.text();
         throw new Error(`generate failed: ${genResp.status} ${t}`);
@@ -98,11 +113,15 @@ export default function decorate(config, api) {
             if (typeof idx2 === 'number' && idx2 >= 0) targetIndex = idx2;
           }
         }
-        const repResp = await fetch('/api/google/replace-image', {
+        // eslint-disable-next-line no-console
+        console.log('[Firefly Plugin] Calling /api/google/replace-image with targetIndex:', targetIndex);
+        const repResp = await fetchWithTimeout('/api/google/replace-image', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ docUrl: window.location.href, targetIndex, imageUrl }),
-        });
+        }, 30000);
+        // eslint-disable-next-line no-console
+        console.log('[Firefly Plugin] /api/google/replace-image status:', repResp.status);
         if (!repResp.ok) {
           const t = await repResp.text();
           throw new Error(`replace failed: ${repResp.status} ${t}`);
@@ -128,7 +147,7 @@ export default function decorate(config, api) {
       // ensure an image is selected / inferable
       const tentative = await detectSelectedImageContext();
       if (!tentative && isGoogleDocs() && !getDocsBubbleRect()) {
-        window.postMessage({ type: 'firefly:result', error: '置換対象の画像が見つかりません（画像をクリックして選択してください）' }, '*');
+        (ev.source || window).postMessage({ type: 'firefly:result', error: '置換対象の画像が見つかりません（画像をクリックして選択してください）' }, ev.origin || '*');
         return;
       }
       // eslint-disable-next-line no-console
@@ -136,11 +155,11 @@ export default function decorate(config, api) {
       const res = await api.firefly.generateAndReplace(String(data.prompt || ''));
       // eslint-disable-next-line no-console
       console.log('[Firefly Plugin] Generate result:', res);
-      window.postMessage({ type: 'firefly:result', res }, '*');
+      (ev.source || window).postMessage({ type: 'firefly:result', res }, ev.origin || '*');
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('[Firefly Plugin] Error:', e);
-      window.postMessage({ type: 'firefly:result', error: String(e?.message || e) }, '*');
+      (ev.source || window).postMessage({ type: 'firefly:result', error: String(e?.message || e) }, ev.origin || '*');
     }
   });
 }
